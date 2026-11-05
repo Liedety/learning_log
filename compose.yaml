@@ -1,0 +1,45 @@
+services:
+  web:
+    # Собрать образ по Dockerfile из текущего каталога.
+    build: .
+    # Автоматически запускать контейнер после перезагрузки сервера.
+    restart: unless-stopped
+    # Передать приложению настройки из локального файла .env.
+    env_file:
+      - .env
+    command:
+      # Запустить командный интерпретатор sh.
+      - sh
+      # Параметр -c говорит sh выполнить следующий элемент как скрипт.
+      - -c
+      # Символ | означает: все строки ниже являются одним многострочным скриптом.
+      - |
+        # Остановить запуск, если любая команда завершится с ошибкой.
+        set -e
+        # Применить миграции базы данных.
+        python manage.py migrate --noinput
+        # Собрать статические файлы Django.
+        python manage.py collectstatic --noinput
+        # exec делает Gunicorn главным процессом контейнера.
+        # Обратный слеш в конце строки продолжает эту же команду на следующей строке.
+        exec gunicorn learning_log.wsgi:application \
+          --bind 0.0.0.0:8000 \
+          --workers 2 \
+          --timeout 60
+    ports:
+      # Опубликовать порт контейнера; адрес и внешний порт берутся из .env.
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    volumes:
+      # Хранить SQLite-базу отдельно от контейнера.
+      - learning_log_data:/app/data
+    healthcheck:
+      # Регулярно проверять, отвечает ли Django внутри контейнера.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  # Именованный том не удаляется при обычном пересоздании контейнера.
+  learning_log_data:
