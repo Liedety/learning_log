@@ -20,4 +20,4 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 # Команда запуска по умолчанию. В compose.yaml она будет дополнена миграциями.
-CMD ["gunicorn", "learning_log.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60"]
+CMD ["gunicorn", "learning_log.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "60"]
